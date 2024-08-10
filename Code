@@ -1,0 +1,87 @@
+#include <iostream>
+#include <queue>
+#include <vector>
+
+class PhysicalResource {
+public:
+    int id;
+    double weight;
+    double deficit; // For DWRR
+
+    PhysicalResource(int id, double weight) : id(id), weight(weight), deficit(0) {}
+
+    // Other necessary methods
+};
+
+class VNRRequest {
+public:
+    int id;
+    double requiredWeight;
+
+    VNRRequest(int id, double requiredWeight) : id(id), requiredWeight(requiredWeight) {}
+
+    // Other necessary methods
+};
+
+class WeightComparator {
+public:
+    bool operator()(const PhysicalResource& a, const PhysicalResource& b) {
+        return a.weight < b.weight;
+    }
+};
+
+void assignWeightsToVNR(VNRRequest& vnr, std::priority_queue<PhysicalResource, std::vector<PhysicalResource>, WeightComparator>& physicalResources) {
+    // Example implementation of DWRR (Deficit Weighted Round Robin)
+    std::vector<PhysicalResource> temp;
+
+    while (!physicalResources.empty()) {
+        PhysicalResource pr = physicalResources.top();
+        physicalResources.pop();
+
+        pr.deficit += pr.weight;
+
+        if (pr.deficit >= vnr.requiredWeight) {
+            pr.deficit -= vnr.requiredWeight;
+            std::cout << "Assigned VNR " << vnr.id << " to Physical Resource " << pr.id << std::endl;
+            // Update the state of the physical resource
+            // Add to temp to reinsert into the priority queue
+            temp.push_back(pr);
+            break;
+        } else {
+            temp.push_back(pr);
+        }
+    }
+
+    // Reinserting back into the priority queue after processing
+    for (const auto& pr : temp) {
+        physicalResources.push(pr);
+    }
+}
+
+void processVNRRequests(std::queue<VNRRequest>& vnrQueue, std::priority_queue<PhysicalResource, std::vector<PhysicalResource>, WeightComparator>& physicalResourcesQueue) {
+    while (!vnrQueue.empty()) {
+        VNRRequest vnr = vnrQueue.front(); // Dequeue VNR request from the FIFO queue
+        vnrQueue.pop();
+        assignWeightsToVNR(vnr, physicalResourcesQueue);
+    }
+    // The final state of the substrate network would be reflected in physicalResourcesQueue
+}
+
+int main() {
+    std::queue<VNRRequest> vnrQueue;
+    std::priority_queue<PhysicalResource, std::vector<PhysicalResource>, WeightComparator> physicalResourcesQueue;
+
+    // Example VNR requests
+    vnrQueue.push(VNRRequest(1, 5.0));
+    vnrQueue.push(VNRRequest(2, 10.0));
+    vnrQueue.push(VNRRequest(3, 3.0));
+
+    // Example Physical resources
+    physicalResourcesQueue.push(PhysicalResource(1, 7.0));
+    physicalResourcesQueue.push(PhysicalResource(2, 10.0));
+    physicalResourcesQueue.push(PhysicalResource(3, 4.0));
+
+    processVNRRequests(vnrQueue, physicalResourcesQueue);
+
+    return 0;
+}
